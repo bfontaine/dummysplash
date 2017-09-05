@@ -46,3 +46,26 @@
    (.traverseTopologically p v))
   ([p x y & args]
    (visit p (mk-visitor* (cons x (cons y args))))))
+
+(defn get-dag
+  "Return a very simple version of a flattened DAG from the given pipeline"
+  [p]
+  (let [dag (atom [])]
+    (visit p
+      :enter (fn [n]
+               ;(println "enter")
+               )
+      :leave (fn [n]
+               ;(println "leave")
+               )
+      :visit (fn [n]
+               (let [node-name (first (node-enclosings n))]
+                 (swap! dag (fn [ls]
+                             (let [lst (last ls)]
+                               (if-not (= lst node-name)
+                                 (conj ls node-name)
+                                 ls))))))
+      :value (fn [v n]
+               ;(println "value")
+               ))
+    @dag))

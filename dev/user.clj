@@ -33,22 +33,3 @@
                        :declaring-class))))
 
 (def p (mk-pipeline))
-
-(defn get-dag
-  [p]
-  (let [dag (atom [])]
-    (dc/visit p
-      :enter (fn [n]
-               (println "enter"))
-      :leave (fn [n]
-               (println "leave"))
-      :visit (fn [n]
-               (let [node-name (first (dc/node-enclosings n))]
-                 (swap! dag (fn [ls]
-                             (let [lst (last ls)]
-                               (if-not (= lst node-name)
-                                 (conj ls node-name)
-                                 ls))))))
-      :value (fn [v n]
-               (println "value")))
-    @dag))
