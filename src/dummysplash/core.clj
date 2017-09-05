@@ -1,20 +1,48 @@
 (ns dummysplash.core
-  (:require [datasplash.api :as ds]))
+  (:import [com.google.cloud.dataflow.sdk Pipeline$PipelineVisitor]
+           [com.google.cloud.dataflow.sdk.runners TransformTreeNode]
+           [com.google.cloud.dataflow.sdk.values PValue]))
 
-(defn fmt-freq
-  [[k v]]
-  (format "%s: %d" k v))
+(defn node-enclosings
+  [^TransformTreeNode n]
+  (loop [n n
+         acc []]
+    (let [s (.getFullName n)]
+      (if (empty? s)
+        acc
+        (recur (.getEnclosingNode n)
+               (cons s acc))))))
 
-(defn job [p]
-  (->> p
-       (ds/read-text-file "foo.txt" {:name "read"})
-       (ds/map count {:name "sizes"})
-       (ds/frequencies)
-     ; (ds/map fmt-freq {:name "format"})
-       (ds/write-text-file "bar.txt" {:without-sharding true})))
+(defn mk-visitor*
+  [args]
+  (let [fns (into {} (map vec (partition-all 2 args)))
 
-(defn mk-pipeline
+        enter (get fns :enter identity)
+        leave (get fns :leave identity)
+        visit (get fns :visit identity)
+        value (get fns :value identity)]
+    (reify
+      Pipeline$PipelineVisitor
+      (^void enterCompositeTransform
+        [this ^TransformTreeNode n]
+        (enter n))
+      (^void leaveCompositeTransform
+        [this ^TransformTreeNode n]
+        (leave n))
+      (^void visitTransform
+        [this ^TransformTreeNode n]
+        (visit n))
+      (^void visitValue
+        [this ^PValue v ^TransformTreeNode n]
+        (value v n)))))
+
+(defn mk-visitor
   [& args]
-  (let [p (ds/make-pipeline [])]
-    (job p)
-    p))
+  (mk-visitor* args))
+
+(defn visit
+  ([p] (visit (mk-visitor* [])))
+  ([p v]
+   (.traverseTopologically p v))
+  ([p x y & args]
+   (visit p (mk-visitor* (cons x (cons y args))))))

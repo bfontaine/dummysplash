@@ -1,5 +1,26 @@
 # Dummysplash
 
+## Example
+
+```clojure
+(require '[dummysplash.core :as dc])
+
+(defn job [p]
+  (->> p
+       (ds/read-text-file "foo.txt" {:name "read"})
+       (ds/map count {:name "sizes"})
+       (ds/frequencies)
+       (ds/write-text-file "bar.txt" {:without-sharding true})))
+
+(defn mk-pipeline
+  []
+  (let [p (ds/make-pipeline [])]
+    (job p)
+    p))
+
+(dc/get-dag (mk-pipeline))
+;; => ["read" "sizes" "Count.PerElement" "TextIO.Write"]
+```
 
 ## License
 
